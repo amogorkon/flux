@@ -1,2 +1,0 @@
-from traits import trait
-
