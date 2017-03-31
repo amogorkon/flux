@@ -4,7 +4,7 @@ from collections import Counter
 from enum import Enum
 from copy import copy
 from weakref import WeakSet, proxy
-from uuid import uuid1
+from uuid import uuid4
 from functools import wraps
 
 
@@ -36,7 +36,7 @@ class TraitBag:
         the bugger without all the boilerplate. 
         Careful bout those global dicts though - the clone needs extra love.
         """
-        self.name = uuid1() if name is None else name
+        self.name = uuid4() if name is None else name
         self.bag = Counter(bag)
         # unpack the list of stereotypes and sets of traits, yielding all traits
         # but since it's a SET-comprehension, return a set of traits
@@ -172,3 +172,5 @@ def can(trait):
                         method.__qualname__, thing.name, thing.state))                
         return calling
     return wrapper
+
+pass
