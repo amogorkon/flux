@@ -1,0 +1,21 @@
+
+name: fluxx
+description: Finite State Machines & Trait-based programming for Python 3
+license: MIT
+url: https://github.com/amogorkon/fluxx
+version: 0.1.1
+author: Anselm Kiefner
+author_email: fluxx-pypi@anselm.kiefner.de
+python_requires: >3.5
+
+keywords: [fsm finite state trait actor observer]
+classifiers:::[
+	Development Status :: 3 - Alpha
+	Intended Audience :: Developers
+	Natural Language :: English
+	License :: OSI Approved :: MIT License
+	Operating System :: OS Independent
+	Programming Language :: Python :: 3 :: Only
+	Topic :: Software Development
+]:::
+                        

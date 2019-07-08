@@ -2,3 +2,5 @@ DEV\ *
 .ipynb_checkpoints/
 __pycache__
 box/*
+dist/
+src/fluxx.egg-info/
