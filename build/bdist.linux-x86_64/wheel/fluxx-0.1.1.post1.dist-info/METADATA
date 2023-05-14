@@ -1,0 +1,29 @@
+Metadata-Version: 2.1
+Name: fluxx
+Version: 0.1.1.post1
+Summary: Finite State Machines & Trait-based programming for Python 3
+Home-page: https://github.com/amogorkon/fluxx
+Author: Anselm Kiefner
+Author-email: fluxx-pypi@anselm.kiefner.de
+License: MIT
+Keywords: fsm,finite,state,trait,actor,observer
+Platform: UNKNOWN
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Natural Language :: English
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Topic :: Software Development
+Requires-Python: >3.5
+Description-Content-Type: text/markdown
+
+# fluxx - modern Finite State Machines & more
+The results of my experiments with FSM's and trait-based programming based on Python 3 enums and sets.
+
+Check the Showcase notebook in docs on https://github.com/amogorkon/fluxx for working examples and documentation.
+
+Have fun!
+- Anselm Kiefner
+
+

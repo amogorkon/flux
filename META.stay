@@ -3,7 +3,7 @@ name: fluxx
 description: Finite State Machines & Trait-based programming for Python 3
 license: MIT
 url: https://github.com/amogorkon/fluxx
-version: 0.1.1
+version: 0.1.1.post1
 author: Anselm Kiefner
 author_email: fluxx-pypi@anselm.kiefner.de
 python_requires: >3.5
