@@ -1,4 +1,4 @@
-
+from pathlib import Path
 from stay import load
 from setuptools import setup, find_packages
 
@@ -6,9 +6,8 @@ with open("META.stay") as f:
     for meta in load(f):
         pass
 
-with open("README.md") as f:
-    LONG_DESCRIPTION = f.read()
-  
+LONG_DESCRIPTION = Path("README.md").read_text()
+
 setup(
     packages=find_packages(where="src"),
     package_dir={"": "src"},

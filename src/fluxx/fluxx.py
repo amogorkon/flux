@@ -23,6 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+
+import contextlib
 from warnings import warn
 from collections import Counter, defaultdict, OrderedDict
 from copy import copy
@@ -80,7 +82,7 @@ class TraitBag:
         self.traits.difference_update(set(ex_traits))
         
     def __str__(self):
-        return str(self.name) if not isinstance(self.name, UUID) else self.name.hex[:5]
+        return self.name.hex[:5] if isinstance(self.name, UUID) else str(self.name)
     
     def __eq__(self, other):
         return self.traits == other.traits and self.bag == other.bag
@@ -119,25 +121,24 @@ class StateMachine:
         self.name = uuid4() if name is None else name
         self.bag = Counter()
         if bag is not None:
-            self.bag.update(bag)
-        
-        self.states = {}
-        self.states.update(states)
+            self.bag |= bag
+
+        self.states = dict(states)
         self.state = initial
         self.previous = initial
-        
+
         self.transitions = defaultdict(lambda: lambda: None)
         if transitions is not None:
-            self.transitions.update(transitions)
-        
+            self.transitions |= transitions
+
         self.enters = defaultdict(lambda: lambda: None)
         if enters is not None:
-            self.enters.update(enters)
-        
+            self.enters |= enters
+
         self.exits = defaultdict(lambda: lambda: None)
         if exits is not None:
-            self.exits.update(exits)
-        
+            self.exits |= exits
+
         if tracing:
             self.history = [initial] if history is None else history
         self.tracing = tracing
@@ -165,28 +166,30 @@ class StateMachine:
     
     def flux_to(self, to_state):
         try:
-            if to_state in self.states[self.state]:                
-                # Exceptions aren't caught here because this might result in undefined behaviour
-                # crash early - crash often
-                self.exits[self.state]()
-                self.transitions[(self.state, to_state)]()
-                self.enters[to_state]()
-
-                self.previous = self.state  # often used in user code
-                self.state = to_state
-                if isclass(to_state):
-                    logger.info(f"{self.name} now {to_state.__name__}")
-                else:
-                    logger.info(f"{self.name} now {to_state}")
-                if self.tracing:
-                    self.history.append(to_state)
-                return True
-            else:
-                warn(f"no valid transition from {self.state} to {to_state}", UserWarning)
-                return False
+            if to_state in self.states[self.state]:
+                return self.fluxxing(to_state)
+            warn(f"no valid transition from {self.state} to {to_state}", UserWarning)
+            return False
         except KeyError:
             warn(f"{self.state} is final", UserWarning)
             return False
+
+    def fluxxing(self, to_state):
+        # Exceptions aren't caught here because this might result in undefined behaviour
+        # crash early - crash often
+        self.exits[self.state]()
+        self.transitions[(self.state, to_state)]()
+        self.enters[to_state]()
+
+        self.previous = self.state  # often used in user code
+        self.state = to_state
+        if isclass(to_state):
+            logger.info(f"{self.name} now {to_state.__name__}")
+        else:
+            logger.info(f"{self.name} now {to_state}")
+        if self.tracing:
+            self.history.append(to_state)
+        return True
     
     @property
     def next_possible_states(self):
@@ -244,28 +247,28 @@ class StateMachine:
     def clone(self, name=None):
         c = copy(self)
         c.name = uuid4() if name is None else name
-        
+
         c.states = {}
-        c.states.update(self.states)
-        
+        c.states |= self.states
+
         c.transitions = defaultdict(lambda: lambda e: None)
-        c.transitions.update(self.transitions)
-        
+        c.transitions |= self.transitions
+
         c.enters = defaultdict(lambda: lambda e: None)
-        c.enters.update(self.enters)
-        
+        c.enters |= self.enters
+
         c.exits = defaultdict(lambda: lambda e: None)
-        c.exits.update(self.exits)
+        c.exits |= self.exits
         return c
     
     def __str__(self):
-        return str(self.name) if not isinstance(self.name, UUID) else self.name.hex[:5]
+        return self.name.hex[:5] if isinstance(self.name, UUID) else str(self.name)
     
     def __repr__(self):
         return f"{self.name} in {self.state} with {self.states}"
     
     def __mul__(self, number):
-        for x in range(number):
+        for _ in range(number):
             yield self.clone()
             
     def __call__(self):
@@ -303,12 +306,10 @@ class Collector(StateMachine):
         self.default = initial if default is None else default
     
     def __setitem__(self, key, value):
-        try:
+        with contextlib.suppress(ValueError):
             m, s = key
             if isinstance(m, StateMachine):
                 key = [key]
-        except ValueError:
-            pass
         self.conditions[frozenset(key)] = value
         self.recursion_check(self.conditions.keys())
     
@@ -318,9 +319,8 @@ class Collector(StateMachine):
             for sm, s in c:
                 if sm is self:
                     raise FluxException("Collector contains itself by recursion!")
-                else:
-                    if isinstance(sm, Collector):
-                        self.recursion_check(sm.conditions.keys())
+                if isinstance(sm, Collector):
+                    self.recursion_check(sm.conditions.keys())
                
 
     def __delitem__(self, key):
@@ -343,24 +343,24 @@ class Collector(StateMachine):
         # better alternative would be to implement __repr__ correctly,
         # then instantiate a new machine from that repr. 
         # However, that would require pickling recursive functions, which is non-trivial.
-        
+
         new = copy(self)
         new.name = uuid4() if name is None else name
-        
+
         new.states = {}
-        new.states.update(self.states)
-        
+        new.states |= self.states
+
         new.transitions = defaultdict(lambda: lambda e: None)
-        new.transitions.update(self.transitions)
-        
+        new.transitions |= self.transitions
+
         new.enters = defaultdict(lambda: lambda e: None)
-        new.enters.update(self.enters)
-        
+        new.enters |= self.enters
+
         new.exits = defaultdict(lambda: lambda e: None)
-        new.exits.update(self.exits)
-        
+        new.exits |= self.exits
+
         new.conditions = {}
-        new.conditions.update(self.conditions)
+        new.conditions |= self.conditions
         return new
 
 
@@ -434,19 +434,19 @@ class TraitStateMachine(StateMachine):
                  stereotypes=None, in_traits=None, ex_traits=None, 
                  stateful_traits=None, **kwargs):
         super().__init__(initial=initial, **kwargs)
-               
+
         stereotypes = [] if stereotypes is None else stereotypes
         in_traits = set() if in_traits is None else in_traits
         ex_traits = set() if ex_traits is None else ex_traits
-        
+
         self.stateless_traits = {t for S in stereotypes for t in S}
         self.stateless_traits.update(set(in_traits))
         self.stateless_traits.difference_update(set(ex_traits))
-        
+
         self.stateful_traits = defaultdict(lambda: set())
         if stateful_traits is not None:
-            self.stateful_traits.update(stateful_traits)
-         
+            self.stateful_traits |= stateful_traits
+
         self.traits = self.stateless_traits | self.stateful_traits[self.state]      
 
     def __call__(self):
@@ -470,41 +470,46 @@ def can(in_trait, ex_trait=None, observed=None):
     def wrapper(func):
         # Delegation of different wrappers for methods and standalone functions under the same umbrella. 
         # Also faster to do the check first and delegate to the correct function based on case than to check the case every call during runtime.
-        
+
         # first we check if we've been given a thing to observe initially
         if observed:
             @wraps(func)
             def calling(*args, **kwargs):
-                if in_trait in observed.traits and not ex_trait in observed.traits:
+                if (
+                    in_trait in observed.traits
+                    and ex_trait not in observed.traits
+                ):
                     func(*args, **kwargs)
                 else:
                     try:
                         warn(f"{func.__qualname__} isn't available while {observed.name} {observed.state} (called with {args} {kwargs})")
                     except AttributeError:
                         warn(f"{func.__qualname__} can't be called, {observed} has no {in_trait}")
-        # next we might have a class method
+
         elif len(func.__qualname__.split('.')) > 1:
             @wraps(func)
             def calling(*args, **kwargs):
                 self, thing, *_ = args
-                if in_trait in thing.traits and not ex_trait in thing.traits:
+                if in_trait in thing.traits and ex_trait not in thing.traits:
                     func(*args, **kwargs)
                 else:
                     try:
                         warn(f"{func.__qualname__} isn't available while {thing.name} {thing.state} (called with {args} {kwargs})")
                     except AttributeError:
                         warn(f"{func.__qualname__} can't be called, {thing} has no {in_trait}")
-        # leaves us with a module-level function
+
         else:
             @wraps(func)
             def calling(*args, **kwargs):
                 thing, *_ = args
-                if in_trait in thing.traits and not ex_trait in thing.traits:
+                if in_trait in thing.traits and ex_trait not in thing.traits:
                     func(*args, **kwargs)
                 else:
                     try:
                         warn(f"{func.__qualname__} isn't available while {thing.name} in {thing.state} (called with {args} {kwargs})")
                     except AttributeError:
                         warn(f"{func.__qualname__} can't be called, {thing} has no {in_trait}")
+
         return calling
+
     return wrapper
